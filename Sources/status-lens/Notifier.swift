@@ -11,7 +11,16 @@ final class Notifier {
 
     func requestAuthorizationIfAvailable() {
         guard available else { return }
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+            guard !granted || error != nil else { return }
+            center.getNotificationSettings { settings in
+                var line = "status-lens: notifications not granted (status=\(settings.authorizationStatus.rawValue))"
+                if let error { line += " error=\(error.localizedDescription)" }
+                line += " — enable in System Settings > Notifications > status-lens"
+                FileHandle.standardError.write(Data((line + "\n").utf8))
+            }
+        }
     }
 
     func notify(title: String, body: String) {
