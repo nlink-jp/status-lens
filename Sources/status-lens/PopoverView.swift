@@ -111,8 +111,10 @@ private struct ProfileSection: View {
 
     @ViewBuilder
     private func componentGrid(_ summary: StatuspageSummary) -> some View {
-        let components = summary.components.filter { !($0.group ?? false) }
-        if !components.isEmpty {
+        // Large pages (Cloudflare lists every PoP) collapse to noteworthy
+        // components + counts so the popover height stays bounded.
+        let digest = componentDigest(summary.components)
+        if !digest.shown.isEmpty {
             LazyVGrid(
                 columns: [
                     GridItem(.flexible(), alignment: .leading),
@@ -121,7 +123,7 @@ private struct ProfileSection: View {
                 alignment: .leading,
                 spacing: 3
             ) {
-                ForEach(components, id: \.id) { component in
+                ForEach(digest.shown, id: \.id) { component in
                     HStack(spacing: 4) {
                         Circle()
                             .fill(component.status.severity.uiColor)
@@ -133,6 +135,37 @@ private struct ProfileSection: View {
                     }
                 }
             }
+        }
+        if digest.hiddenNoteworthyCount > 0 || digest.hiddenOperationalCount > 0 {
+            componentSummaryLine(digest)
+        }
+    }
+
+    @ViewBuilder
+    private func componentSummaryLine(_ digest: ComponentDigest) -> some View {
+        let allHealthy = digest.shown.isEmpty && digest.hiddenNoteworthyCount == 0
+        let text: String = {
+            if allHealthy {
+                return "All \(digest.totalCount) components operational"
+            }
+            var parts: [String] = []
+            if digest.hiddenNoteworthyCount > 0 {
+                parts.append("+\(digest.hiddenNoteworthyCount) more degraded")
+            }
+            if digest.hiddenOperationalCount > 0 {
+                parts.append("\(digest.hiddenOperationalCount) operational")
+            }
+            return parts.joined(separator: " · ")
+        }()
+        HStack(spacing: 4) {
+            if allHealthy {
+                Circle()
+                    .fill(ServiceStatus.operational.uiColor)
+                    .frame(width: 6, height: 6)
+            }
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }

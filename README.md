@@ -54,7 +54,8 @@ services are grayed out. Polling hits the public unauthenticated API
 Launch the app; the indicator appears in the menu bar.
 
 **Left click** opens the detail popover: per profile, the component grid
-(severity dots), active incidents (impact color, latest update, relative
+(severity dots; pages with many components collapse to degraded-only plus
+counts), active incidents (impact color, latest update, relative
 time), and scheduled maintenance, plus refresh / settings / quit in the
 footer.
 
@@ -81,12 +82,14 @@ status-lens --version
 status-lens --help
 ```
 
-## Development status
+## Install
 
-Phase 1 (core + menu bar) and Phase 2 (popover, notifications, settings,
-launch at login) are implemented. Planned next:
+```bash
+brew install --cask nlink-jp/tap/status-lens
+```
 
-- Phase 3: app icon, signed + notarized release, Homebrew tap
+Or grab the signed + notarized zip from
+[GitHub Releases](https://github.com/nlink-jp/status-lens/releases).
 
 Note: notifications and launch-at-login require the `.app` bundle; the
 bare dev binary degrades gracefully (stderr log / disabled toggle).

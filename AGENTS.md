@@ -40,6 +40,9 @@ Sources/
                             on 2026-08-06 — verify before adding entries)
     ServiceState.swift      ServiceStatus (severity-ordered), ProfileState,
                             worstOf() aggregation
+    ComponentDigest.swift   componentDigest() — popover collapse rule for
+                            large pages (Cloudflare has hundreds of PoP
+                            components; >12 → noteworthy-only + counts)
     StatuspageClient.swift  SummaryFetching protocol, URLSession client,
                             loadStates() parallel never-throwing poll round
     Settings.swift          DisplayMode, Settings codec (forward-compatible

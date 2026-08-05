@@ -52,7 +52,7 @@ Statuspage API に対して実測検証済み）と、任意のページを URL 
 アプリを起動するとメニューバーにインジケーターが現れます。
 
 **左クリック**で詳細ポップオーバーを開きます: プロファイルごとに
-コンポーネント一覧（重大度ドット）、進行中インシデント（impact 色・最新
+コンポーネント一覧（重大度ドット。コンポーネントが多いページは劣化分のみ+件数に畳む）、進行中インシデント（impact 色・最新
 アップデート・相対時刻）、予定メンテナンス。フッターに更新 / 設定 / 終了。
 
 **右クリック**でクイックメニュー: プロファイル状態行（ステータスページを
@@ -77,12 +77,14 @@ status-lens --version
 status-lens --help
 ```
 
-## 開発状況
+## インストール
 
-Phase 1（コア + メニューバー）と Phase 2（ポップオーバー・通知・設定 UI・
-ログイン時起動）は実装済み。今後の予定:
+```bash
+brew install --cask nlink-jp/tap/status-lens
+```
 
-- Phase 3: アプリアイコン、署名 + notarize 済みリリース、Homebrew tap
+または [GitHub Releases](https://github.com/nlink-jp/status-lens/releases)
+から署名 + notarize 済み zip を取得してください。
 
 注: 通知とログイン時起動は `.app` バンドルが必要です。開発用の素の
 バイナリでは gracefully degrade します（stderr ログ / トグル無効化）。

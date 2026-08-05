@@ -12,6 +12,11 @@
 
 ### Changed
 
+- Popover component lists are digested: pages with more than 12
+  components (Cloudflare lists every PoP — hundreds) show only degraded
+  components, worst first and capped at 10, with the rest collapsed into
+  "+N more degraded · M operational" counts, so the popover height stays
+  bounded. Small pages keep the full grid
 - Settings now apply immediately, the Mac way — the Apply/Revert buttons
   are gone. Toggles and pickers write through on change; text fields
   commit on Enter or focus loss. An invalid URL is flagged inline while
