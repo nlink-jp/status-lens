@@ -1,0 +1,96 @@
+# status-lens
+
+[English README](README.md)
+
+Statuspage ホストのステータスページを見張るメニューバー常駐ウォッチャー。
+
+status-lens は macOS のメニューバーに常駐し、依存している外部サービス —
+Claude、GitHub、その他 Atlassian Statuspage でホストされている任意のページ —
+の運転状況を常時表示します。自分の作業が謎の失敗をする前に、サービス側の障害に
+気づけます。nlink-jp の observability 系ツール群では、コスト=claude-usage-lens、
+マシン負荷=load-spinner、サービス稼働状況=status-lens という棲み分けです。
+
+## メニューバー表示
+
+各プロファイルを「短縮ラベル + 色付き形状記号」で描画します（色と形状の
+二重符号化なので、モノクロ環境や色覚多様性でも状態が読めます）:
+
+| 状態 | 記号 | 色 |
+|------|------|-----|
+| 正常稼働 | チェックマーク | 緑 |
+| 軽微な障害 | 警告三角 | 黄 |
+| 重大な障害 | ×印 | 橙 |
+| 深刻な障害 | ×印 | 赤 |
+| メンテナンス中 | 工具 | 青 |
+| 到達不能 | ？ | グレー |
+
+表示モードはメニューから切替できます:
+
+- **全プロファイル表示** — プロファイルごとにラベル+記号（例: `CL✓ GH✓`）
+- **最悪値のみ表示** — 単一の色付きドット + 劣化中プロファイル数
+
+「到達不能」（ネットワーク断・ページ URL 移転など）は「正常稼働」と意図的に
+区別しています。ウォッチャーが盲目になっているときは、そう表示します。
+
+## プロファイル
+
+プロファイルは 1 つの Statuspage ホストページです（名前 / ベース URL /
+メニューバー用 1〜3 文字ラベル）。内蔵プリセット:
+
+- **Claude** (`status.claude.com`) — 既定で有効
+- **GitHub** (`www.githubstatus.com`)
+
+任意の Statuspage ホストページを追加できます（設定 UI は開発予定 — 下記
+ステータス参照）。ポーリングは認証不要の公開 API（`/api/v2/summary.json`）を
+既定 60 秒間隔で取得します。
+
+## 使い方
+
+アプリを起動するとメニューバーにインジケーターが現れます。クリックでメニュー:
+
+- プロファイル行（`Claude: Operational`）— ステータスページを開く
+- **Refresh now** — 即時ポーリング
+- **Show every profile** / **Show worst status only** — 表示モード切替
+- **Quit status-lens**
+
+バイナリは GUI 専用で、応答するフラグは 2 つだけです:
+
+```bash
+status-lens --version
+```
+
+```bash
+status-lens --help
+```
+
+## 開発状況
+
+Phase 1（コア + メニューバー）は実装済み。今後の予定:
+
+- Phase 2: 詳細ポップオーバー（コンポーネント / 進行中インシデント / 予定
+  メンテナンス）、劣化・復旧通知、プロファイル CRUD の設定 UI、ログイン時起動
+- Phase 3: アプリアイコン、署名 + notarize 済みリリース、Homebrew tap
+
+## ソースからビルド
+
+macOS 13+（darwin/arm64）と Swift 6 toolchain が必要です。
+
+```bash
+make build
+```
+
+```bash
+make test
+```
+
+`make build-app` で `dist/status-lens.app` を組み立て（Developer ID 署名）、
+`make package` で notarize + staple して リリース用 zip を作ります。
+
+## 設計メモ
+
+設計判断とその経緯は RFP に記録しています:
+[docs/ja/status-lens-rfp.ja.md](docs/ja/status-lens-rfp.ja.md)。
+
+## ライセンス
+
+MIT — [LICENSE](LICENSE) を参照。
