@@ -64,7 +64,9 @@ Per-profile bell toggle in settings.
 
 **Settings** (gear in the popover, or right-click menu): profile CRUD
 (name / URL / menu bar label / watch / notify), polling interval, display
-mode, launch at login. Edits land in one validated Apply step.
+mode, launch at login. Changes apply immediately, the Mac way — text
+fields commit on Enter or focus loss; an invalid URL is flagged inline
+while the previous address stays in effect.
 
 The binary is GUI-only and responds to exactly two flags:
 

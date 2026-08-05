@@ -104,11 +104,18 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
   toggles).
 - **An LSUIElement app still needs a main menu** for ⌘C/⌘V/⌘A in the
   settings window's text fields and ⌘W to close it (`MainMenu.swift`).
-- **Settings edits are draft-based.** The window edits a local draft and
-  validates the whole thing in one Apply (`Profile.parseBaseURL`), so
-  half-typed URLs never reach the polling loop. Launch-at-login reads and
-  writes SMAppService directly — system state, deliberately not persisted
-  in `Settings`.
+- **Settings apply immediately** (v0.1.1; the Apply-button draft model was
+  rejected as un-Mac-like). Toggles/pickers write through on change; URL,
+  label, and interval fields commit on Enter / focus loss (`@FocusState`
+  onChange). The URL field validates at commit (`Profile.parseBaseURL`) —
+  invalid input is flagged inline and the previous valid URL stays in
+  effect, so half-typed URLs still never reach the polling loop.
+  `AppDelegate.apply` is called on every edit: it rebinds cached states so
+  name/label edits render instantly, and refetches only when the polling
+  set (enabled × URL) actually changed. In-flight polls are cancelled and
+  their results rebound against current settings before use.
+  Launch-at-login reads and writes SMAppService directly — system state,
+  deliberately not persisted in `Settings`.
 
 ## Roadmap
 

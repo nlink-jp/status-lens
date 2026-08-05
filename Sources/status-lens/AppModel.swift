@@ -23,6 +23,12 @@ final class AppModel: ObservableObject {
         self.lastUpdated = Date()
     }
 
+    /// Replace states without touching `lastUpdated` — used when settings
+    /// edits rebind cached states (no fresh data was fetched).
+    func rebind(states: [ProfileState]) {
+        self.states = states
+    }
+
     func update(settings: Settings) {
         self.settings = settings
     }

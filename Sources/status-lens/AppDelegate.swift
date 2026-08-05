@@ -76,18 +76,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func poll() {
-        guard pollTask == nil else { return }
+        pollTask?.cancel()
         let profiles = settings.profiles
         let fetcher = self.fetcher
         pollTask = Task { @MainActor [weak self] in
             let states = await loadStates(profiles: profiles, fetcher: fetcher)
-            guard let self else { return }
+            guard let self, !Task.isCancelled else { return }
             self.applyPollResult(states)
             self.pollTask = nil
         }
     }
 
-    private func applyPollResult(_ states: [ProfileState]) {
+    private func applyPollResult(_ fetched: [ProfileState]) {
+        // Settings may have changed while the fetch was in flight — rebind
+        // each state to the current profile (fresh name/label) and drop
+        // states whose profile was removed, disabled, or re-pointed.
+        let byId = Dictionary(uniqueKeysWithValues: settings.profiles.map { ($0.id, $0) })
+        let states = fetched.compactMap { state -> ProfileState? in
+            guard
+                let profile = byId[state.profile.id],
+                profile.enabled,
+                profile.baseURL == state.profile.baseURL
+            else { return nil }
+            return ProfileState(
+                profile: profile,
+                status: state.status,
+                summary: state.summary,
+                errorDescription: state.errorDescription
+            )
+        }
         for state in states {
             notifyIfCrossed(state)
         }
@@ -258,22 +275,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         apply(settings: updated)
     }
 
-    /// Single entry point for settings changes (menu, settings UI).
+    /// What a profile contributes to the polling set; label/name/notify
+    /// edits deliberately don't trigger a refetch.
+    private struct PollKey: Hashable {
+        let id: UUID
+        let url: URL
+    }
+
+    private func pollKeys(of settings: Settings) -> Set<PollKey> {
+        Set(settings.profiles.filter(\.enabled).map { PollKey(id: $0.id, url: $0.baseURL) })
+    }
+
+    /// Single entry point for settings changes (menu, settings UI). Called
+    /// on every edit — settings apply immediately.
     func apply(settings newSettings: Settings) {
         let intervalChanged = newSettings.pollingIntervalSeconds != settings.pollingIntervalSeconds
-        let profilesChanged = newSettings.profiles != settings.profiles
+        let pollingSetChanged = pollKeys(of: newSettings) != pollKeys(of: settings)
         settings = newSettings
         store.save(newSettings)
         model.update(settings: newSettings)
         if intervalChanged {
             schedulePollTimer()
         }
-        if profilesChanged {
-            let known = Set(newSettings.profiles.map(\.id))
-            previousStatuses = previousStatuses.filter { known.contains($0.key) }
+
+        // Rebind cached states so name/label edits and disabled profiles
+        // reflect in the menu bar immediately, without waiting for a poll.
+        let byId = Dictionary(uniqueKeysWithValues: newSettings.profiles.map { ($0.id, $0) })
+        states = states.compactMap { state -> ProfileState? in
+            guard let profile = byId[state.profile.id], profile.enabled else { return nil }
+            return ProfileState(
+                profile: profile,
+                status: state.status,
+                summary: state.summary,
+                errorDescription: state.errorDescription
+            )
+        }
+        model.rebind(states: states)
+        render()
+
+        if pollingSetChanged {
+            previousStatuses = previousStatuses.filter { byId[$0.key] != nil }
             poll()
         }
-        render()
     }
 }
 
