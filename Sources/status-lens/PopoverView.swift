@@ -41,6 +41,11 @@ struct PopoverView: View {
             }
             .buttonStyle(.borderless)
             .help("Refresh now")
+            Button(action: actions.openSettings) {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
+            .help("Settings")
             if let updated = model.lastUpdated {
                 Text("Updated \(updated.formatted(date: .omitted, time: .shortened))")
                     .font(.caption2)

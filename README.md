@@ -48,12 +48,23 @@ below). Polling hits the public unauthenticated API
 
 ## Usage
 
-Launch the app; the indicator appears in the menu bar. Click it for a menu:
+Launch the app; the indicator appears in the menu bar.
 
-- Per-profile line (`Claude: Operational`) — opens the status page
-- **Refresh now** — poll immediately
-- **Show every profile** / **Show worst status only** — display mode
-- **Quit status-lens**
+**Left click** opens the detail popover: per profile, the component grid
+(severity dots), active incidents (impact color, latest update, relative
+time), and scheduled maintenance, plus refresh / settings / quit in the
+footer.
+
+**Right click** opens the quick menu: per-profile status line (opens the
+status page), refresh now, display mode toggle, settings, quit.
+
+**Notifications** fire on worsening crossings (operational → incident, or
+minor → major) and on recovery — never repeatedly for an unchanged state.
+Per-profile bell toggle in settings.
+
+**Settings** (gear in the popover, or right-click menu): profile CRUD
+(name / URL / menu bar label / watch / notify), polling interval, display
+mode, launch at login. Edits land in one validated Apply step.
 
 The binary is GUI-only and responds to exactly two flags:
 
@@ -67,12 +78,13 @@ status-lens --help
 
 ## Development status
 
-Phase 1 (core + menu bar) is implemented. Planned next:
+Phase 1 (core + menu bar) and Phase 2 (popover, notifications, settings,
+launch at login) are implemented. Planned next:
 
-- Phase 2: detail popover (components / active incidents / scheduled
-  maintenance), degradation & recovery notifications, settings UI for
-  profile CRUD, launch at login
 - Phase 3: app icon, signed + notarized release, Homebrew tap
+
+Note: notifications and launch-at-login require the `.app` bundle; the
+bare dev binary degrades gracefully (stderr log / disabled toggle).
 
 ## Build from source
 

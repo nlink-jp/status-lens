@@ -17,10 +17,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pollTimer: Timer?
     private var pollTask: Task<Void, Never>?
     private var activity: NSObjectProtocol?
+    private var settingsWindow: NSWindow?
 
     private var actions: AppActions {
         AppActions(
             refresh: { [weak self] in self?.poll() },
+            openSettings: { [weak self] in self?.openSettings() },
             quit: { NSApp.terminate(nil) }
         )
     }
@@ -29,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings = store.load()
         model = AppModel(settings: settings)
         notifier.requestAuthorizationIfAvailable()
+        NSApp.mainMenu = makeMainMenu()
 
         // An LSUIElement app with no visible window gets App-Napped and its
         // timers freeze; hold an activity for the app's lifetime.
@@ -140,6 +143,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
 
+    // MARK: Settings window
+
+    private func openSettings() {
+        popover.performClose(nil)
+        if let window = settingsWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        let view = SettingsView(model: model) { [weak self] newSettings in
+            self?.apply(settings: newSettings)
+        }
+        let hosting = NSHostingController(rootView: view)
+        let window = NSWindow(contentViewController: hosting)
+        window.title = "status-lens settings"
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+        window.center()
+        settingsWindow = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     // MARK: Quick menu (right click)
 
     private func showQuickMenu() {
@@ -184,6 +211,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(disabledItem(title: "status-lens \(appVersion)"))
 
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettingsFromMenu), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
         let quit = NSMenuItem(
             title: "Quit status-lens",
             action: #selector(NSApplication.terminate(_:)),
@@ -192,6 +223,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(quit)
 
         return menu
+    }
+
+    @objc private func openSettingsFromMenu() {
+        openSettings()
     }
 
     private func disabledItem(title: String) -> NSMenuItem {
@@ -245,5 +280,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 extension AppDelegate: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         popover.contentViewController = nil
+    }
+}
+
+extension AppDelegate: NSWindowDelegate {
+    func windowWillClose(_ notification: Notification) {
+        if (notification.object as? NSWindow) === settingsWindow {
+            settingsWindow = nil
+        }
     }
 }

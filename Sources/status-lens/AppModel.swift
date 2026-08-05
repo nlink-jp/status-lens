@@ -32,5 +32,6 @@ final class AppModel: ObservableObject {
 /// AppDelegate).
 struct AppActions {
     let refresh: () -> Void
+    let openSettings: () -> Void
     let quit: () -> Void
 }

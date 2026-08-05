@@ -41,11 +41,20 @@ Sources/
                             loadStates() parallel never-throwing poll round
     Settings.swift          DisplayMode, Settings codec (forward-compatible
                             decodeIfPresent defaults), interval clamping
-  status-lens/           Executable (AppKit)
+  status-lens/           Executable (AppKit + SwiftUI)
     Entry.swift             @main; --version/--help dispatch vs GUI bootstrap
-    AppDelegate.swift       NSStatusItem, polling timer, menu, App Nap activity
+    AppDelegate.swift       NSStatusItem (left=popover / right=quick menu),
+                            polling timer, transition notifications, settings
+                            window, App Nap activity
+    AppModel.swift          ObservableObject snapshot for SwiftUI views;
+                            AppActions closures; Settings typealias
     StatusBarRenderer.swift NSAttributedString title (parallel/worst modes),
                             status→NSColor mapping
+    PopoverView.swift       Detail popover (components/incidents/maintenance)
+    SettingsView.swift      Draft-based settings form (validated Apply)
+    Notifier.swift          UNUserNotificationCenter wrapper (bundle-gated)
+    LoginItem.swift         SMAppService wrapper (bundle-gated)
+    MainMenu.swift          Main menu for Edit/Close key equivalents
     SettingsStore.swift     UserDefaults persistence (codec lives in core)
     Version.swift           appVersion from bundle Info.plist ("dev" fallback)
 Tests/StatusLensCoreTests/
@@ -76,11 +85,28 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
 - **Testability.** All non-trivial logic lives in `StatusLensCore` behind the
   `SummaryFetching` protocol; the AppKit layer stays thin. `loadStates` never
   throws — failures degrade to per-profile `.unknown` states.
+- **`Settings` name collision.** SwiftUI exports a `Settings` scene; the app
+  module pins `typealias Settings = StatusLensCore.Settings` (AppModel.swift).
+- **Bundle-gated system services.** `UNUserNotificationCenter` and
+  `SMAppService` crash / fail without a real bundle. Both are gated on
+  `Bundle.main.bundleIdentifier != nil`: the bare dev binary logs
+  notifications to stderr and disables the login-item toggle.
+- **Notifications fire on crossings only.** `statusTransition()` (core,
+  tested) gates: worsening into/within degraded fires, improvements within
+  degraded stay silent, leaving degraded fires recovery. First observation
+  is the baseline, never a notification.
+- **Popover content is built lazily** (created on open, released in
+  `popoverDidClose`) so no SwiftUI tree lays out while hidden — same lesson
+  as load-spinner's panel.
+- **An LSUIElement app still needs a main menu** for ⌘C/⌘V/⌘A in the
+  settings window's text fields and ⌘W to close it (`MainMenu.swift`).
+- **Settings edits are draft-based.** The window edits a local draft and
+  validates the whole thing in one Apply (`Profile.parseBaseURL`), so
+  half-typed URLs never reach the polling loop. Launch-at-login reads and
+  writes SMAppService directly — system state, deliberately not persisted
+  in `Settings`.
 
 ## Roadmap
 
-- Phase 2: detail popover (components / incidents / maintenance),
-  degradation & recovery notifications (rising-cross only), settings UI for
-  profile CRUD, SMAppService login item
 - Phase 3: app icon, signing + notarization, zip distribution, Homebrew tap,
   umbrella submodule + catalog integration

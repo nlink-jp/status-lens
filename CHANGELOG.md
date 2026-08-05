@@ -19,3 +19,13 @@
 - `--version` / `--help` CLI surface (GUI-only binary otherwise)
 - Repository scaffold per org conventions: Makefile (build → `dist/`),
   vendored codesign/notarize/brew scripts, RFP documents (ja/en)
+- Detail popover on left click: per-profile component grid (severity
+  dots), active incidents (impact color, latest update, relative time),
+  scheduled maintenance; refresh / settings / quit footer. Quick menu
+  moved to right click
+- Notifications on worsening crossings and recoveries only (per-profile
+  bell toggle; bundle-gated — the bare dev binary logs to stderr)
+- Settings window: profile CRUD with whole-draft validated Apply,
+  polling interval, display mode, launch at login (SMAppService)
+- Main menu with Edit key equivalents so ⌘C/⌘V/⌘A work in the settings
+  window and ⌘W closes it
