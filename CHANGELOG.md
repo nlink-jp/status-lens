@@ -23,6 +23,10 @@
 
 ### Fixed
 
+- Statuspage-compatible pages that omit top-level keys (e.g. OpenAI's
+  non-Atlassian implementation has no `scheduled_maintenances`) decoded
+  as "unreachable"; absent arrays now decode as empty and `page.url` is
+  optional
 - Denied notification authorization is now logged to stderr with a
   pointer to System Settings (it was silently swallowed; an unanswered
   permission prompt dismissed by process kill is recorded as denied and

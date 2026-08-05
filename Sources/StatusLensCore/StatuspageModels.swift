@@ -18,6 +18,20 @@ public struct StatuspageSummary: Codable, Equatable, Sendable {
         case scheduledMaintenances = "scheduled_maintenances"
     }
 
+    /// Statuspage-compatible implementations (e.g. OpenAI's page, which is
+    /// not Atlassian-hosted) omit top-level keys — absent arrays decode as
+    /// empty instead of failing the summary.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.page = try container.decode(Page.self, forKey: .page)
+        self.status = try container.decode(OverallStatus.self, forKey: .status)
+        self.components = try container.decodeIfPresent([Component].self, forKey: .components) ?? []
+        self.incidents = try container.decodeIfPresent([Incident].self, forKey: .incidents) ?? []
+        self.scheduledMaintenances = try container.decodeIfPresent(
+            [ScheduledMaintenance].self, forKey: .scheduledMaintenances
+        ) ?? []
+    }
+
     public init(
         page: Page,
         status: OverallStatus,
@@ -35,7 +49,7 @@ public struct StatuspageSummary: Codable, Equatable, Sendable {
     public struct Page: Codable, Equatable, Sendable {
         public let id: String
         public let name: String
-        public let url: String
+        public let url: String?
         public let updatedAt: String?
 
         enum CodingKeys: String, CodingKey {
@@ -43,7 +57,7 @@ public struct StatuspageSummary: Codable, Equatable, Sendable {
             case updatedAt = "updated_at"
         }
 
-        public init(id: String, name: String, url: String, updatedAt: String?) {
+        public init(id: String, name: String, url: String?, updatedAt: String?) {
             self.id = id
             self.name = name
             self.url = url

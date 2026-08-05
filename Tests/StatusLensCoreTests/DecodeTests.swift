@@ -114,6 +114,44 @@ final class DecodeTests: XCTestCase {
         XCTAssertEqual(ServiceStatus(indicator: summary.status.indicator), .unknown)
     }
 
+    /// OpenAI's page is Statuspage-compatible but not Atlassian-hosted:
+    /// ULID ids, no top-level scheduled_maintenances. Shape captured live
+    /// 2026-08-06 — this exact payload once decoded as "unreachable".
+    func testStatuspageCompatiblePageWithoutMaintenancesDecodes() throws {
+        let data = Data("""
+        {
+          "page": {
+            "id": "01JMDK9XYNY6RXSED6SDWW50WY",
+            "name": "OpenAI",
+            "url": "https://status.openai.com/",
+            "updated_at": "2026-08-05T19:03:27Z"
+          },
+          "status": {"indicator": "minor", "description": "Partial System Degradation"},
+          "components": [
+            {"id": "01JMDK9Y1B4V4CE6NA2SVREJ1Q", "name": "API", "status": "operational", "position": 1}
+          ],
+          "incidents": [
+            {
+              "id": "01KZ9DMQD2GJ8JJWDN7572RH78",
+              "name": "Issues with Custom GPT actions",
+              "status": "monitoring",
+              "impact": "minor",
+              "shortlink": null,
+              "updated_at": "2026-08-05T19:03:27Z"
+            }
+          ]
+        }
+        """.utf8)
+
+        let summary = try StatuspageClient.decodeSummary(data)
+        XCTAssertEqual(summary.page.name, "OpenAI")
+        XCTAssertEqual(summary.status.indicator, .minor)
+        XCTAssertEqual(summary.components.count, 1)
+        XCTAssertEqual(summary.incidents.count, 1)
+        XCTAssertNil(summary.incidents[0].shortlink)
+        XCTAssertTrue(summary.scheduledMaintenances.isEmpty)
+    }
+
     func testGarbagePayloadThrowsClientError() {
         let data = Data("<html>redirect page</html>".utf8)
         XCTAssertThrowsError(try StatuspageClient.decodeSummary(data)) { error in

@@ -73,6 +73,12 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
 - **Open-set enum decoding is deliberate.** Statuspage adds components and
   states without notice; component composition must never be hardcoded and
   unknown raw values map to `.unknown` (rendered as gray `?`).
+- **Statuspage-compatible ≠ Atlassian Statuspage.** Some catalog pages run
+  compatible re-implementations (OpenAI: ULID ids, no top-level
+  `scheduled_maintenances`). Top-level arrays decode with empty defaults
+  and `page.url` is optional. When probing catalog candidates, hit
+  `summary.json` (what the app actually fetches) — `status.json` alone
+  passed OpenAI while `summary.json` did not.
 - **Unreachable ranks between healthy and degraded.** Severity order is
   operational < maintenance < unknown < minor < major < critical: a blind
   watcher must be visible, but must not outrank a real outage.
