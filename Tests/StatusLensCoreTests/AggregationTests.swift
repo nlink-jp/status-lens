@@ -57,6 +57,15 @@ final class AggregationTests: XCTestCase {
         XCTAssertEqual(ServiceStatus.unknown.symbolName, "questionmark")
     }
 
+    func testComponentSeverityMapping() {
+        XCTAssertEqual(ComponentStatus.operational.severity, .operational)
+        XCTAssertEqual(ComponentStatus.degradedPerformance.severity, .minor)
+        XCTAssertEqual(ComponentStatus.partialOutage.severity, .major)
+        XCTAssertEqual(ComponentStatus.majorOutage.severity, .critical)
+        XCTAssertEqual(ComponentStatus.underMaintenance.severity, .maintenance)
+        XCTAssertEqual(ComponentStatus.unknown("x").severity, .unknown)
+    }
+
     func testFetchedAndUnreachableFactories() throws {
         let summary = try StatuspageClient.decodeSummary(DecodeTests.summaryFixture)
         let profile = Profile.claudePreset

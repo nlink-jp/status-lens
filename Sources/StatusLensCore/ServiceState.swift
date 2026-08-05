@@ -49,6 +49,21 @@ public enum ServiceStatus: Int, Equatable, Comparable, CaseIterable, Sendable {
     }
 }
 
+extension ComponentStatus {
+    /// Component-level severity on the shared scale (popover dots reuse the
+    /// menu bar's status colors).
+    public var severity: ServiceStatus {
+        switch self {
+        case .operational: return .operational
+        case .degradedPerformance: return .minor
+        case .partialOutage: return .major
+        case .majorOutage: return .critical
+        case .underMaintenance: return .maintenance
+        case .unknown: return .unknown
+        }
+    }
+}
+
 /// Snapshot of one profile after a polling round.
 public struct ProfileState: Equatable, Sendable {
     public let profile: Profile

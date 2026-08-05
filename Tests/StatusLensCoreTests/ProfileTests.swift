@@ -40,6 +40,28 @@ final class ProfileTests: XCTestCase {
         XCTAssertNotEqual(Profile.claudePreset.id, Profile.githubPreset.id)
     }
 
+    func testParseBaseURLAcceptsAndNormalizes() {
+        XCTAssertEqual(
+            Profile.parseBaseURL("https://status.claude.com")?.absoluteString,
+            "https://status.claude.com"
+        )
+        XCTAssertEqual(
+            Profile.parseBaseURL("www.githubstatus.com")?.absoluteString,
+            "https://www.githubstatus.com"
+        )
+        XCTAssertEqual(
+            Profile.parseBaseURL("  https://x.example/  ")?.absoluteString,
+            "https://x.example"
+        )
+    }
+
+    func testParseBaseURLRejectsInvalidInput() {
+        XCTAssertNil(Profile.parseBaseURL(""))
+        XCTAssertNil(Profile.parseBaseURL("   "))
+        XCTAssertNil(Profile.parseBaseURL("ftp://x.example"))
+        XCTAssertNil(Profile.parseBaseURL("https://"))
+    }
+
     func testCodableRoundTrip() throws {
         let original = Profile(
             name: "Cloudflare",

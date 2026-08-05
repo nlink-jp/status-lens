@@ -40,6 +40,27 @@ public struct Profile: Codable, Equatable, Sendable, Identifiable {
         return String(trimmed.prefix(3))
     }
 
+    /// Parse user input into a page base URL. A missing scheme defaults to
+    /// https; only http(s) URLs with a host are accepted.
+    public static func parseBaseURL(_ input: String) -> URL? {
+        var text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        if !text.contains("://") { text = "https://" + text }
+        guard
+            let components = URLComponents(string: text),
+            let scheme = components.scheme?.lowercased(),
+            scheme == "https" || scheme == "http",
+            let host = components.host, !host.isEmpty
+        else {
+            return nil
+        }
+        var normalized = components
+        while normalized.path.hasSuffix("/") {
+            normalized.path = String(normalized.path.dropLast())
+        }
+        return normalized.url
+    }
+
     /// Suggest a 2-character label from a service name: prefer the word's
     /// uppercase letters ("GitHub" → "GH"), otherwise the first two
     /// alphanumerics uppercased ("Claude" → "CL").
