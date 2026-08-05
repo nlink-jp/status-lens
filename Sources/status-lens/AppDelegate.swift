@@ -6,14 +6,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let store = SettingsStore()
     private let fetcher = StatuspageClient()
+    private let notifier = Notifier()
     private var settings: Settings = .default
     private var states: [ProfileState] = []
+    /// Last observed status per profile — the notification baseline.
+    private var previousStatuses: [UUID: ServiceStatus] = [:]
     private var pollTimer: Timer?
     private var pollTask: Task<Void, Never>?
     private var activity: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         settings = store.load()
+        notifier.requestAuthorizationIfAvailable()
 
         // An LSUIElement app with no visible window gets App-Napped and its
         // timers freeze; hold an activity for the app's lifetime.
@@ -55,10 +59,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pollTask = Task { @MainActor [weak self] in
             let states = await loadStates(profiles: profiles, fetcher: fetcher)
             guard let self else { return }
-            self.states = states
-            self.render()
-            self.rebuildMenu()
+            self.applyPollResult(states)
             self.pollTask = nil
+        }
+    }
+
+    private func applyPollResult(_ states: [ProfileState]) {
+        for state in states {
+            notifyIfCrossed(state)
+        }
+        previousStatuses = Dictionary(
+            uniqueKeysWithValues: states.map { ($0.profile.id, $0.status) }
+        )
+        self.states = states
+        render()
+        rebuildMenu()
+    }
+
+    private func notifyIfCrossed(_ state: ProfileState) {
+        guard state.profile.notify else { return }
+        let detail = state.summary?.status.description ?? state.errorDescription ?? ""
+        switch statusTransition(from: previousStatuses[state.profile.id], to: state.status) {
+        case .degraded(_, let to):
+            notifier.notify(title: "\(state.profile.name): \(to.displayText)", body: detail)
+        case .recovered(_, let to):
+            notifier.notify(title: "\(state.profile.name) recovered: \(to.displayText)", body: detail)
+        case .none:
+            break
         }
     }
 
