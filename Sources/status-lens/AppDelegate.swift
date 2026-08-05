@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pollTask: Task<Void, Never>?
     private var activity: NSObjectProtocol?
     private var settingsWindow: NSWindow?
+    private var popoverClickMonitors: [Any] = []
 
     private var actions: AppActions {
         AppActions(
@@ -158,6 +159,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hosting.sizingOptions = [.preferredContentSize]
         popover.contentViewController = hosting
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        installPopoverClickMonitors()
+    }
+
+    /// .transient dismissal is unreliable for accessory apps (it breaks once
+    /// the app has been activated for the settings window), so outside
+    /// clicks are watched explicitly while the popover is shown.
+    private func installPopoverClickMonitors() {
+        removePopoverClickMonitors()
+        let events: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
+        let global = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.popover.performClose(nil)
+            }
+        }
+        let local = NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
+            let window = event.window
+            MainActor.assumeIsolated {
+                guard let self, self.popover.isShown else { return }
+                // The status item button toggles the popover itself; closing
+                // here too would make the button click close-then-reopen.
+                if window === self.statusItem.button?.window { return }
+                if window !== self.popover.contentViewController?.view.window {
+                    self.popover.performClose(nil)
+                }
+            }
+            return event
+        }
+        popoverClickMonitors = [global, local].compactMap { $0 }
+    }
+
+    private func removePopoverClickMonitors() {
+        for monitor in popoverClickMonitors {
+            NSEvent.removeMonitor(monitor)
+        }
+        popoverClickMonitors = []
     }
 
     // MARK: Settings window
@@ -322,6 +358,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
+        removePopoverClickMonitors()
         popover.contentViewController = nil
     }
 }

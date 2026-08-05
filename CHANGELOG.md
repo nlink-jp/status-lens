@@ -28,6 +28,10 @@
 
 ### Fixed
 
+- The popover stopped closing on outside clicks once the app had been
+  activated for the settings window (transient NSPopover dismissal is
+  unreliable in accessory apps); outside clicks are now watched with
+  explicit global/local event monitors while the popover is shown
 - Statuspage-compatible pages that omit top-level keys (e.g. OpenAI's
   non-Atlassian implementation has no `scheduled_maintenances`) decoded
   as "unreachable"; absent arrays now decode as empty and `page.url` is

@@ -110,6 +110,13 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
 - **Popover content is built lazily** (created on open, released in
   `popoverDidClose`) so no SwiftUI tree lays out while hidden — same lesson
   as load-spinner's panel.
+- **Transient popover dismissal breaks in accessory apps.** Once the app
+  has been activated (settings window + `NSApp.activate`), NSPopover's
+  `.transient` outside-click detection stops working. The popover installs
+  global + local mouse-down monitors while shown (`installPopoverClickMonitors`)
+  and closes itself; the local monitor must ignore the status item button's
+  window or a button click would close-then-reopen. Monitors are removed in
+  `popoverDidClose`.
 - **Every borderless icon button in the popover needs `.focusable(false)`.**
   Otherwise the first focusable control grabs keyboard focus the instant the
   popover opens and draws a focus ring (same lesson as load-spinner's flip
