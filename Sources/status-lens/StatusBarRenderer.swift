@@ -8,7 +8,7 @@ import StatusLensCore
 enum StatusBarRenderer {
     static let labelFont = NSFont.systemFont(ofSize: 12, weight: .medium)
 
-    static func color(for status: ServiceStatus) -> NSColor {
+    nonisolated static func color(for status: ServiceStatus) -> NSColor {
         switch status {
         case .operational: return .systemGreen
         case .maintenance: return .systemBlue

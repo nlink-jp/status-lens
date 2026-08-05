@@ -1,12 +1,15 @@
 import AppKit
 import StatusLensCore
+import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
+    private var popover: NSPopover!
     private let store = SettingsStore()
     private let fetcher = StatuspageClient()
     private let notifier = Notifier()
+    private var model: AppModel!
     private var settings: Settings = .default
     private var states: [ProfileState] = []
     /// Last observed status per profile — the notification baseline.
@@ -15,8 +18,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pollTask: Task<Void, Never>?
     private var activity: NSObjectProtocol?
 
+    private var actions: AppActions {
+        AppActions(
+            refresh: { [weak self] in self?.poll() },
+            quit: { NSApp.terminate(nil) }
+        )
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         settings = store.load()
+        model = AppModel(settings: settings)
         notifier.requestAuthorizationIfAvailable()
 
         // An LSUIElement app with no visible window gets App-Napped and its
@@ -27,8 +38,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = statusItem.button {
+            button.target = self
+            button.action = #selector(statusItemClicked)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
+
+        popover = NSPopover()
+        popover.behavior = .transient
+        popover.delegate = self
+
         render()
-        rebuildMenu()
         schedulePollTimer()
         poll()
     }
@@ -72,8 +92,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             uniqueKeysWithValues: states.map { ($0.profile.id, $0.status) }
         )
         self.states = states
+        model.update(states: states)
         render()
-        rebuildMenu()
     }
 
     private func notifyIfCrossed(_ state: ProfileState) {
@@ -96,9 +116,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    // MARK: Menu
+    // MARK: Status item click
 
-    private func rebuildMenu() {
+    @objc private func statusItemClicked() {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showQuickMenu()
+        } else {
+            togglePopover()
+        }
+    }
+
+    private func togglePopover() {
+        if popover.isShown {
+            popover.performClose(nil)
+            return
+        }
+        guard let button = statusItem.button else { return }
+        // Popover content is built on open and released on close so the
+        // SwiftUI tree does not live (and lay out) while hidden.
+        let hosting = NSHostingController(rootView: PopoverView(model: model, actions: actions))
+        hosting.sizingOptions = [.preferredContentSize]
+        popover.contentViewController = hosting
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+    }
+
+    // MARK: Quick menu (right click)
+
+    private func showQuickMenu() {
+        statusItem.menu = buildQuickMenu()
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
+    }
+
+    private func buildQuickMenu() -> NSMenu {
         let menu = NSMenu()
 
         if states.isEmpty {
@@ -141,7 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         menu.addItem(quit)
 
-        statusItem.menu = menu
+        return menu
     }
 
     private func disabledItem(title: String) -> NSMenuItem {
@@ -162,17 +212,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func useParallelMode() {
-        setDisplayMode(.parallel)
+        var updated = settings
+        updated.displayMode = .parallel
+        apply(settings: updated)
     }
 
     @objc private func useWorstMode() {
-        setDisplayMode(.worst)
+        var updated = settings
+        updated.displayMode = .worst
+        apply(settings: updated)
     }
 
-    private func setDisplayMode(_ mode: DisplayMode) {
-        settings.displayMode = mode
-        store.save(settings)
+    /// Single entry point for settings changes (menu, settings UI).
+    func apply(settings newSettings: Settings) {
+        let intervalChanged = newSettings.pollingIntervalSeconds != settings.pollingIntervalSeconds
+        let profilesChanged = newSettings.profiles != settings.profiles
+        settings = newSettings
+        store.save(newSettings)
+        model.update(settings: newSettings)
+        if intervalChanged {
+            schedulePollTimer()
+        }
+        if profilesChanged {
+            let known = Set(newSettings.profiles.map(\.id))
+            previousStatuses = previousStatuses.filter { known.contains($0.key) }
+            poll()
+        }
         render()
-        rebuildMenu()
+    }
+}
+
+extension AppDelegate: NSPopoverDelegate {
+    func popoverDidClose(_ notification: Notification) {
+        popover.contentViewController = nil
     }
 }
