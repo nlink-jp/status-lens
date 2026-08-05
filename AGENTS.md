@@ -35,6 +35,9 @@ Sources/
                             ComponentStatus are open sets (unknown raw values
                             decode to .unknown, never fail the summary)
     Profile.swift           Profile (+presets Claude/GitHub), label suggestion
+    ServiceCatalog.swift    Built-in "Add profile" directory (17 services,
+                            every URL probed live against the Statuspage API
+                            on 2026-08-06 — verify before adding entries)
     ServiceState.swift      ServiceStatus (severity-ordered), ProfileState,
                             worstOf() aggregation
     StatuspageClient.swift  SummaryFetching protocol, URLSession client,

@@ -30,12 +30,18 @@ struct SettingsView: View {
                 }
             }
 
-            Button {
-                addProfile()
+            Menu {
+                ForEach(ServiceCatalog.entries) { entry in
+                    Button(entry.name) { addCatalogProfile(entry) }
+                        .disabled(existingURLs.contains(entry.baseURL))
+                }
+                Divider()
+                Button("Custom…") { addCustomProfile() }
             } label: {
                 Label("Add profile", systemImage: "plus")
             }
-            .buttonStyle(.borderless)
+            .menuStyle(.borderlessButton)
+            .fixedSize()
 
             Divider()
 
@@ -105,10 +111,22 @@ struct SettingsView: View {
         apply(settings)
     }
 
-    private func addProfile() {
+    private var existingURLs: Set<URL> {
+        Set(model.settings.profiles.map(\.baseURL))
+    }
+
+    /// Catalog entries are verified Statuspage pages, so they start watched.
+    private func addCatalogProfile(_ entry: CatalogEntry) {
+        guard !existingURLs.contains(entry.baseURL) else { return }
         var settings = model.settings
-        // Starts disabled so the placeholder URL is never polled; the user
-        // fills in the address, then flips the watch toggle on.
+        settings.profiles.append(entry.makeProfile())
+        apply(settings)
+    }
+
+    /// Custom rows start disabled so the placeholder URL is never polled;
+    /// the user fills in the address, then flips the watch toggle on.
+    private func addCustomProfile() {
+        var settings = model.settings
         settings.profiles.append(Profile(
             name: "New service",
             baseURL: URL(string: "https://status.example.com")!,

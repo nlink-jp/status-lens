@@ -40,9 +40,12 @@ Claude、GitHub、その他 Atlassian Statuspage でホストされている任�
 - **Claude** (`status.claude.com`) — 既定で有効
 - **GitHub** (`www.githubstatus.com`)
 
-任意の Statuspage ホストページを追加できます（設定 UI は開発予定 — 下記
-ステータス参照）。ポーリングは認証不要の公開 API（`/api/v2/summary.json`）を
-既定 60 秒間隔で取得します。
+**Add profile** メニューには既知の Statuspage ホストサービス 17 件の内蔵
+カタログ（Claude、GitHub、OpenAI、Cloudflare、Discord、npm など — 全 URL を
+Statuspage API に対して実測検証済み）と、任意のページを URL で追加する
+**Custom…** が並びます。追加済みのサービスはグレーアウトされます。
+ポーリングは認証不要の公開 API（`/api/v2/summary.json`）を既定 60 秒間隔で
+取得します。
 
 ## 使い方
 

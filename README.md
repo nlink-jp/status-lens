@@ -42,8 +42,11 @@ A profile is one Statuspage-hosted status page: a name, its base URL, and a
 - **Claude** (`status.claude.com`) — enabled by default
 - **GitHub** (`www.githubstatus.com`)
 
-Any Statuspage-hosted page can be added (settings UI planned; see status
-below). Polling hits the public unauthenticated API
+The **Add profile** menu offers a built-in catalog of 17 known
+Statuspage-hosted services (Claude, GitHub, OpenAI, Cloudflare, Discord,
+npm, …) — every URL in it was verified live against the Statuspage API —
+plus **Custom…** for any other Statuspage-hosted page by URL. Already-added
+services are grayed out. Polling hits the public unauthenticated API
 (`/api/v2/summary.json`) every 60 seconds by default.
 
 ## Usage

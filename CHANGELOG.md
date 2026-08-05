@@ -2,6 +2,14 @@
 
 ## [v0.1.1] - 2026-08-06
 
+### Added
+
+- "Add profile" is now a dropdown with a built-in catalog of 17 known
+  Statuspage-hosted services (all URLs verified live against
+  `/api/v2/status.json`), plus "Custom…" for arbitrary URLs.
+  Catalog picks start watched immediately; already-added services are
+  disabled in the menu
+
 ### Changed
 
 - Settings now apply immediately, the Mac way — the Apply/Revert buttons
