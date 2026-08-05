@@ -40,11 +40,13 @@ struct PopoverView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
+            .focusable(false)
             .help("Refresh now")
             Button(action: actions.openSettings) {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.borderless)
+            .focusable(false)
             .help("Settings")
             if let updated = model.lastUpdated {
                 Text("Updated \(updated.formatted(date: .omitted, time: .shortened))")
@@ -59,6 +61,7 @@ struct PopoverView: View {
                 Image(systemName: "power")
             }
             .buttonStyle(.borderless)
+            .focusable(false)
             .help("Quit status-lens")
         }
     }
@@ -85,6 +88,7 @@ private struct ProfileSection: View {
                     Image(systemName: "arrow.up.right.square")
                 }
                 .buttonStyle(.borderless)
+                .focusable(false)
                 .help("Open status page")
             }
 

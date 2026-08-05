@@ -98,6 +98,10 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
 - **Popover content is built lazily** (created on open, released in
   `popoverDidClose`) so no SwiftUI tree lays out while hidden — same lesson
   as load-spinner's panel.
+- **Every borderless icon button in the popover needs `.focusable(false)`.**
+  Otherwise the first focusable control grabs keyboard focus the instant the
+  popover opens and draws a focus ring (same lesson as load-spinner's flip
+  toggles).
 - **An LSUIElement app still needs a main menu** for ⌘C/⌘V/⌘A in the
   settings window's text fields and ⌘W to close it (`MainMenu.swift`).
 - **Settings edits are draft-based.** The window edits a local draft and
