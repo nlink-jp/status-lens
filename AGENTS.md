@@ -110,9 +110,19 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
 - **Popover content is built lazily** (created on open, released in
   `popoverDidClose`) so no SwiftUI tree lays out while hidden — same lesson
   as load-spinner's panel.
-- **Transient popover dismissal breaks in accessory apps.** Once the app
-  has been activated (settings window + `NSApp.activate`), NSPopover's
-  `.transient` outside-click detection stops working. The popover installs
+- **The popover must take key focus on open, or it renders dimmed.** A
+  status item click does not activate an accessory app, so the popover
+  window opens non-key and macOS draws its material in the inactive state —
+  under macOS 26's Liquid Glass that is a visibly dark, dimmed sheet.
+  `togglePopover` calls `makeKey()` on the popover window right after
+  `show(relativeTo:)` (measured: +32/255 mean luminance in the panel body;
+  `makeKey()` alone is pixel-identical to `NSApp.activate` + `makeKey()`,
+  and `makeKey()` activates the app as a side effect anyway). Same line as
+  load-spinner's panel.
+- **Transient popover dismissal breaks in accessory apps.** Once the app has
+  been activated (settings window + `NSApp.activate`, or the popover's own
+  `makeKey()` above), NSPopover's `.transient` outside-click detection stops
+  working — so dismissal must never rely on it. The popover installs
   global + local mouse-down monitors while shown (`installPopoverClickMonitors`)
   and closes itself; the local monitor must ignore the status item button's
   window or a button click would close-then-reopen. Monitors are removed in

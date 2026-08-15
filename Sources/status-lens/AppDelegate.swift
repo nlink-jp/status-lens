@@ -159,6 +159,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hosting.sizingOptions = [.preferredContentSize]
         popover.contentViewController = hosting
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        // A status item click does not activate an accessory app, so the
+        // popover window opens without key status and its material renders in
+        // the inactive state — on macOS 26's Liquid Glass panels that reads as
+        // a dark, dimmed sheet. Taking key focus brightens it (and activates
+        // the app, which is what the click monitors below are there for).
+        popover.contentViewController?.view.window?.makeKey()
         installPopoverClickMonitors()
     }
 

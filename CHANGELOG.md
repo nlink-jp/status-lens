@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- The detail popover opened unfocused, so macOS drew its material in the
+  inactive state — on macOS 26's Liquid Glass panels that reads as a dark,
+  dimmed sheet over the desktop. A status item click does not activate an
+  accessory app; the popover window now takes key focus on open
+
 ## [v0.1.1] - 2026-08-06
 
 ### Added
