@@ -18,6 +18,7 @@ no other CLI subcommands (explicit org-convention exception, see RFP).
   `git describe`) and signs it with a Developer ID Application identity.
 - `make package` — build-app, then notarize + staple (`nlink-jp-notary`
   keychain profile), and zip to `dist/status-lens-<version>-darwin-arm64.zip`.
+- `make verify-release` — gate: `.notarized` marker + `stapler validate` (run before upload).
 - `make brew` — generate the Homebrew cask from the built zip into the local
   `nlink-jp/homebrew-tap` checkout (see `scripts/release-brew.mk`).
 - `make test` / `swift test` — runs `StatusLensCoreTests` (55 tests).
