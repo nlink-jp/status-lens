@@ -72,6 +72,10 @@ mode, launch at login. Changes apply immediately, the Mac way — text
 fields commit on Enter or focus loss; an invalid URL is flagged inline
 while the previous address stays in effect.
 
+The app is single-instance: starting a second copy (for example, a
+notification click resolving to a different copy of the .app) logs to
+stderr and exits, leaving the running instance alone.
+
 The binary is GUI-only and responds to exactly two flags:
 
 ```bash

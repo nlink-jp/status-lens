@@ -20,7 +20,7 @@ no other CLI subcommands (explicit org-convention exception, see RFP).
   keychain profile), and zip to `dist/status-lens-<version>-darwin-arm64.zip`.
 - `make brew` — generate the Homebrew cask from the built zip into the local
   `nlink-jp/homebrew-tap` checkout (see `scripts/release-brew.mk`).
-- `make test` / `swift test` — runs `StatusLensCoreTests` (25 tests).
+- `make test` / `swift test` — runs `StatusLensCoreTests` (55 tests).
 - `make run` — `swift run` (debug).
 
 Signing/notarization uses the shared scripts under `scripts/` (vendored from
@@ -47,6 +47,8 @@ Sources/
                             loadStates() parallel never-throwing poll round
     Settings.swift          DisplayMode, Settings codec (forward-compatible
                             decodeIfPresent defaults), interval clamping
+    SingleInstance.swift    singleInstanceDecision() — startup duplicate-
+                            instance guard (pure; pids in, decision out)
   status-lens/           Executable (AppKit + SwiftUI)
     Entry.swift             @main; --version/--help dispatch vs GUI bootstrap
     AppDelegate.swift       NSStatusItem (left=popover / right=quick menu),
@@ -99,6 +101,17 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
   throws — failures degrade to per-profile `.unknown` states.
 - **`Settings` name collision.** SwiftUI exports a `Settings` scene; the app
   module pins `typealias Settings = StatusLensCore.Settings` (AppModel.swift).
+- **Notification clicks launch by bundle ID — enforce a single instance.**
+  Clicking a banner makes notificationd open the app via LaunchServices,
+  which resolves `jp.nlink.status-lens` among *all* registered copies
+  (`dist/` dev builds, release-verification extractions, `/Applications`)
+  and may start a different copy than the running one → two menu bar
+  items, double polling (observed 2026-08-25). Guarded at two layers:
+  `LSMultipleInstancesProhibited` (Info.plist, stops LaunchServices
+  launches) and a startup check in `Entry.main`
+  (`singleInstanceDecision`, core-tested) that exits with a stderr note
+  (covers direct exec / `open -n`). Side effect: to run a `dist/` build,
+  quit the installed instance first — a second copy now refuses to start.
 - **Bundle-gated system services.** `UNUserNotificationCenter` and
   `SMAppService` crash / fail without a real bundle. Both are gated on
   `Bundle.main.bundleIdentifier != nil`: the bare dev binary logs
