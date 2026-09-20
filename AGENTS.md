@@ -138,18 +138,62 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
   window opens non-key and macOS draws its material in the inactive state —
   under macOS 26's Liquid Glass that is a visibly dark, dimmed sheet.
   `togglePopover` calls `makeKey()` on the popover window right after
-  `show(relativeTo:)` (measured: +32/255 mean luminance in the panel body;
-  `makeKey()` alone is pixel-identical to `NSApp.activate` + `makeKey()`,
-  and `makeKey()` activates the app as a side effect anyway). Same line as
-  load-spinner's panel.
-- **Transient popover dismissal breaks in accessory apps.** Once the app has
-  been activated (settings window + `NSApp.activate`, or the popover's own
-  `makeKey()` above), NSPopover's `.transient` outside-click detection stops
-  working — so dismissal must never rely on it. The popover installs
-  global + local mouse-down monitors while shown (`installPopoverClickMonitors`)
-  and closes itself; the local monitor must ignore the status item button's
-  window or a button click would close-then-reopen. Monitors are removed in
-  `popoverDidClose`.
+  `show(relativeTo:)` (measured 2026-08-15: +32/255 mean luminance in the
+  panel body; `makeKey()` alone is pixel-identical to `NSApp.activate` +
+  `makeKey()`). Same line as load-spinner's panel.
+  - **`makeKey()` is not an activation.** This entry used to end "and
+    `makeKey()` activates the app as a side effect anyway". That was an
+    inference from the identical pixels; the activation state had never been
+    measured. Measured on the installed v0.1.3 (macOS 27.0, 2026-09-20):
+    after the status item click + `makeKey()`, status-lens was never the
+    frontmost app — 3/3, `NSWorkspace.frontmostApplication` and
+    `lsappinfo front` agreed, sampled from 0.15 s to 3 s after opening.
+  - Opening the popover takes frontmost status away, if anything: with
+    status-lens frontmost beforehand (settings window opened through
+    "Settings…", which calls `NSApp.activate`), the previously frontmost app
+    was frontmost again 0.15 s after the status item click — 3/3, and 3/3 on
+    a control build without `makeKey()`. "The app is active while its popover
+    is open" is not a state the status item click produces.
+- **Outside-click dismissal never relies on `.transient`.** The popover
+  installs global + local mouse-down monitors while shown
+  (`installPopoverClickMonitors`) and closes itself; the local monitor must
+  ignore the status item button's window or a button click would
+  close-then-reopen. Monitors are removed in `popoverDidClose`. What is
+  known about why, and where each part comes from:
+  - **Observed 2026-08-06 (v0.1.1):** after the settings window +
+    `NSApp.activate` was added, the popover stopped closing on outside
+    clicks, and the monitors went in. That build had no `makeKey()` yet
+    (v0.1.2 added it). The observation stands. What this entry made of it —
+    "`.transient` breaks once the app has been activated, by the settings
+    window or by the popover's own `makeKey()`" — was a causal reading, and
+    the measurements below do not support either half.
+  - **Measured 2026-09-20 (macOS 27.0)** on control builds of the current
+    source, run as bare release binaries, 3 clicks per cell. With only the
+    `installPopoverClickMonitors()` call removed, `.transient` closed the
+    popover when the outside click landed in a window that takes activation
+    (another app's normal window 3/3, the already-frontmost app's window
+    3/3) and missed surfaces that take none (another process's
+    non-activating panel 0/3, an empty stretch of the menu bar 0/3). The
+    same numbers came back in all three states tried: never activated;
+    settings window open and status-lens made frontmost before every trial
+    (the already-frontmost case was not run there); settings opened, then
+    closed. Activation history changed nothing.
+  - **With `makeKey()` removed as well** (the 2026-08-06 shape), nothing
+    closed: 0/3 on all four surfaces, including the clicks that made another
+    app frontmost. On this app `makeKey()` is what lets `.transient` work at
+    all, not what breaks it — and the monitors are needed either way.
+    load-spinner's `makeKey()`-less control still closed on activation-taking
+    clicks, so this detail does not carry across apps without measuring.
+  - **The shipped combination** (installed v0.1.3, same day): every outside
+    surface closed 3/3 in the same three states; in the never-activated
+    state an inside click kept it open 3/3 and a status item click closed it
+    without reopening 3/3.
+  - Method, and the rules for re-verifying (synthetic HID clicks, status item
+    frame from the AX `AXExtrasMenuBar`, popover visibility from
+    `CGWindowList`, click only a probe-owned window/panel or a point just
+    re-read as `AXMenuBar`): load-spinner's AGENTS.md, "Outside-click
+    dismissal never relies on `.transient` alone". Not measured here: a click
+    into status-lens's own settings window with the monitors removed.
 - **Every borderless icon button in the popover needs `.focusable(false)`.**
   Otherwise the first focusable control grabs keyboard focus the instant the
   popover opens and draws a focus ring (same lesson as load-spinner's flip

@@ -162,15 +162,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // A status item click does not activate an accessory app, so the
         // popover window opens without key status and its material renders in
         // the inactive state — on macOS 26's Liquid Glass panels that reads as
-        // a dark, dimmed sheet. Taking key focus brightens it (and activates
-        // the app, which is what the click monitors below are there for).
+        // a dark, dimmed sheet. Taking key focus brightens it. It does not
+        // activate the app (measured on macOS 27.0: never frontmost), and it
+        // is not why the click monitors below exist — see AGENTS.md.
         popover.contentViewController?.view.window?.makeKey()
         installPopoverClickMonitors()
     }
 
-    /// .transient dismissal is unreliable for accessory apps (it breaks once
-    /// the app has been activated for the settings window), so outside
-    /// clicks are watched explicitly while the popover is shown.
+    /// .transient alone misses outside clicks that take no activation — an
+    /// empty stretch of the menu bar, another process's non-activating panel
+    /// (measured on macOS 27.0, whether or not the app had been activated for
+    /// the settings window) — so outside clicks are watched explicitly while
+    /// the popover is shown.
     private func installPopoverClickMonitors() {
         removePopoverClickMonitors()
         let events: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
