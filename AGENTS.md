@@ -48,6 +48,9 @@ Sources/
                             loadStates() parallel never-throwing poll round
     Settings.swift          DisplayMode, Settings codec (forward-compatible
                             decodeIfPresent defaults), interval clamping
+    PanelToggle.swift       one click, two events (global monitor + button
+                            action): who dismisses, who opens, and what the
+                            popover's own readings cannot tell (pure)
     SingleInstance.swift    singleInstanceDecision() — startup duplicate-
                             instance guard (pure; pids in, decision out)
   status-lens/           Executable (AppKit + SwiftUI)
@@ -154,11 +157,44 @@ docs/{en,ja}/            RFP (design decisions + discussion log)
     was frontmost again 0.15 s after the status item click — 3/3, and 3/3 on
     a control build without `makeKey()`. "The app is active while its popover
     is open" is not a state the status item click produces.
-- **Outside-click dismissal never relies on `.transient`.** The popover
-  installs global + local mouse-down monitors while shown
-  (`installPopoverClickMonitors`) and closes itself; the local monitor must
-  ignore the status item button's window or a button click would
-  close-then-reopen. Monitors are removed in `popoverDidClose`. What is
+- **A click on the status item is decided by `PanelToggle` (`StatusLensCore`), and
+  nothing reads the panel to do it.** Measured on the real app (macOS 27.0,
+  2026-09-21) with synthetic HID clicks and every event logged:
+  - **`NSPopover.isShown` stays true for about half a second after a close**,
+    until `popoverDidClose` — and that report arrives *after* a show that
+    followed it, so the delegate callback cannot be believed on its own either.
+    The panel window's `isVisible` goes false at once, but it is also false
+    between a show and the moment the panel appears (AppKit queues a show that
+    starts during a close animation behind it, about 0.4 s). **This was the
+    reported defect**: deciding from `isShown`, a re-click inside that half
+    second was read as "the panel is open" and closed it again, so the panel did
+    not open — 0 out of 10 at every gap tried on the release build, against 10
+    out of 10 at 130 ms and 200 ms with the fix.
+  - **The panel can only be opened from the button's action.** A show issued
+    from the monitor, on the mouse-down or on the mouse-up, was dismissed by
+    AppKit inside the same click, every time. The monitor's part is to dismiss.
+  - **One click produces two events and the second often does not come**: the
+    monitor sees it first, the action 23–41 ms later, and of eight
+    well-separated clicks eight were monitored and five produced an action (the
+    missing ones being clicks that closed the panel). So an action within
+    `PanelToggle.actionWindow` (0.1 s) of the monitor closing the panel for a
+    click on the item is that click's second event and does nothing. **Do not
+    pair the two events by order** — with one of them missing, "the action of
+    the click that just closed the panel" and "the action of the click that is
+    meant to open it" are the same event; an earlier fix did pair them and
+    swallowed clicks.
+  - **Residual, measured:** at a 60–100 ms gap the panel ended up closed once in
+    ten, when the dismissed click's action arrived after the window and was
+    taken for a click of its own. Two clicks that fast are one gesture, and the
+    alternative — a longer window — swallows the re-click, which is the defect
+    above. Pinned by `testAVeryFastDoubleClickCanEndUpClosed`.
+  - The rule that nothing decides from `isShown` is machine-checked by
+    `PanelReadingRuleTests`; the AppKit readings above are pinned by
+    `PopoverReadingsTests`.
+- **Outside-click dismissal never relies on `.transient`.** The global + local
+  mouse-down monitors are installed at launch (`installPopoverClickMonitors`)
+  and kept for as long as the app runs; the local monitor must ignore the status
+  item button's window or a button click would close-then-reopen. What is
   known about why, and where each part comes from:
   - **Observed 2026-08-06 (v0.1.1):** after the settings window +
     `NSApp.activate` was added, the popover stopped closing on outside

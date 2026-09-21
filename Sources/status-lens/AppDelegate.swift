@@ -19,6 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var activity: NSObjectProtocol?
     private var settingsWindow: NSWindow?
     private var popoverClickMonitors: [Any] = []
+    /// Whether the popover is up, and which of the two events of one click on
+    /// our own status item has already acted. Never `popover.isShown`, which
+    /// lags a close by about half a second (see `PanelToggle`).
+    private var panelToggle = PanelToggle()
 
     private var actions: AppActions {
         AppActions(
@@ -51,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover = NSPopover()
         popover.behavior = .transient
         popover.delegate = self
+        installPopoverClickMonitors()
 
         render()
         schedulePollTimer()
@@ -147,11 +152,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// The button's action. Usually the second event of a click the monitor has
+    /// already acted on, and then dropped; it is what carries an activation the
+    /// monitor cannot see, from the keyboard or assistive software.
     private func togglePopover() {
-        if popover.isShown {
-            popover.performClose(nil)
-            return
+        switch panelToggle.statusItemAction(at: Date()) {
+        case .close: popover.performClose(nil)
+        case .open: showPopover()
+        case .none: break
         }
+    }
+
+    private func showPopover() {
         guard let button = statusItem.button else { return }
         // Popover content is built on open and released on close so the
         // SwiftUI tree does not live (and lay out) while hidden.
@@ -166,36 +178,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // activate the app (measured on macOS 27.0: never frontmost), and it
         // is not why the click monitors below exist — see AGENTS.md.
         popover.contentViewController?.view.window?.makeKey()
-        installPopoverClickMonitors()
     }
 
-    /// .transient alone misses outside clicks that take no activation — an
-    /// empty stretch of the menu bar, another process's non-activating panel
-    /// (measured on macOS 27.0, whether or not the app had been activated for
-    /// the settings window) — so outside clicks are watched explicitly while
-    /// the popover is shown.
+    private func closePopoverFromApp() {
+        if panelToggle.closeFromApp() == .close { popover.performClose(nil) }
+    }
+
+    /// Installed at launch and kept for as long as the app runs: it is what
+    /// acts on a click on our own status item, whose button action arrives
+    /// later and sometimes not at all (measured — see `PanelToggle`). It is
+    /// also what dismisses the popover on an outside click: `.transient` alone
+    /// misses clicks that take no activation — an empty stretch of the menu
+    /// bar, another process's non-activating panel (measured on macOS 27.0,
+    /// whether or not the app had been activated for the settings window).
     private func installPopoverClickMonitors() {
         removePopoverClickMonitors()
         let events: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
-        let global = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.popover.performClose(nil)
-            }
+        let global = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] event in
+            // A global monitor's event has no window, so this is already in
+            // screen coordinates. NSEvent is not Sendable; the point is.
+            let location = event.locationInWindow
+            MainActor.assumeIsolated { self?.globalMouseDown(at: location) }
         }
         let local = NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
             let window = event.window
             MainActor.assumeIsolated {
-                guard let self, self.popover.isShown else { return }
+                guard let self, self.panelToggle.isUp else { return }
                 // The status item button toggles the popover itself; closing
                 // here too would make the button click close-then-reopen.
                 if window === self.statusItem.button?.window { return }
                 if window !== self.popover.contentViewController?.view.window {
-                    self.popover.performClose(nil)
+                    self.closePopoverFromApp()
                 }
             }
             return event
         }
         popoverClickMonitors = [global, local].compactMap { $0 }
+    }
+
+    /// Every global mouse-down: a click on our own status item toggles the
+    /// popover here — this is the channel that never misses one — and any other
+    /// click dismisses it.
+    private func globalMouseDown(at location: CGPoint) {
+        // The frame is read now: the item is as wide as its content.
+        let onItem = statusItemOwns(
+            location, itemWindowFrame: statusItem.button?.window?.frame)
+        if panelToggle.globalMouseDown(onStatusItem: onItem, at: Date()) == .close {
+            popover.performClose(nil)
+        }
     }
 
     private func removePopoverClickMonitors() {
@@ -208,7 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Settings window
 
     private func openSettings() {
-        popover.performClose(nil)
+        closePopoverFromApp()
         if let window = settingsWindow {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -367,7 +397,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
-        removePopoverClickMonitors()
+        // Arrives about half a second after the close, which can be after the
+        // popover has been opened again; `PanelToggle` tells the two apart.
+        panelToggle.panelReportedClose()
+        guard !panelToggle.isUp else { return }
         popover.contentViewController = nil
     }
 }
